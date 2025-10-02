@@ -1,4 +1,5 @@
-**Classic Magic 8-Ball Web App
+Classic Magic 8-Ball Web App
+
 This is a standalone, single-file web application that simulates the classic Magic 8-Ball toy experience. It features a responsive, dark-themed UI built with Tailwind CSS and relies entirely on Vanilla JavaScript for logic and CSS keyframes for the shake animation.
 
 Key Features

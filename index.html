@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magic 8-Ball Predictor</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117;
+        }
+        /* Keyframe animation for the shake effect */
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0) rotate(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translate(-3px, 0) rotate(-1deg); }
+            20%, 40%, 60%, 80% { transform: translate(3px, 0) rotate(1deg); }
+        }
+        .shaking {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+        /* Triangle shape for the display window */
+        .triangle {
+            width: 0;
+            height: 0;
+            border-left: 35px solid transparent;
+            border-right: 35px solid transparent;
+            border-bottom: 70px solid #f8fafc; /* Tailwind's slate-50 */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(0deg);
+        }
+        /* Circle for the prediction text */
+        .prediction-circle {
+            background-color: #f8fafc; /* Tailwind's slate-50 */
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            /* Mask to create the triangle window look */
+            
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <!-- Main Application Container -->
+    <div class="w-full max-w-sm bg-gray-800 p-6 rounded-xl shadow-2xl">
+        <h1 class="text-3xl font-bold text-center text-white mb-6">🔮 Magic 8-Ball</h1>
+        <p class="text-gray-400 text-center mb-6">Ask any yes/no question below and hit "Predict"!</p>
+        
+        <!-- Input Area -->
+        <div class="mb-8">
+            <input type="text" id="questionInput" placeholder="Should I code all night?" 
+                   class="w-full p-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out">
+            <button id="predictButton" onclick="askTheBall()"
+                    class="mt-4 w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition duration-300 ease-in-out shadow-lg transform hover:scale-[1.01]">
+                Ask the 8-Ball
+            </button>
+        </div>
+
+        <!-- 8-Ball Visualizer -->
+        <div id="eightBallContainer" class="relative w-64 h-64 mx-auto rounded-full bg-black shadow-[0_0_50px_rgba(0,0,0,0.8),_inset_0_0_20px_rgba(255,255,255,0.2)]">
+            
+            <!-- White Display Window (Masked Circle) -->
+            <div id="predictionDisplay" class="prediction-circle opacity-0 transition-opacity duration-700 ease-out flex items-center justify-center text-center p-3">
+                <p id="predictionText" class="text-black font-extrabold text-sm leading-tight text-center">
+                    8
+                </p>
+            </div>
+
+            <!-- The number 8 in the default state -->
+            <div id="defaultEight" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white font-extrabold text-9xl z-10 select-none">8</div>
+        </div>
+
+        <!-- Message Box for errors/info (replacing alert()) -->
+        <div id="messageBox" class="mt-8 p-3 text-sm rounded-lg text-center opacity-0 transition-opacity duration-300"></div>
+
+    </div>
+
+    <script>
+        // Array containing the 9 possible Magic 8-Ball outcomes
+        const predictions = [
+            "Yes - definitely.",
+            "It is decidedly so.",
+            "Without a doubt.",
+            "Reply hazy, try again.",
+            "Ask again later.",
+            "Better not tell you now.",
+            "My sources say no.",
+            "Outlook not so good.",
+            "Very doubtful."
+        ];
+
+        const ballContainer = document.getElementById('eightBallContainer');
+        const predictionDisplay = document.getElementById('predictionDisplay');
+        const predictionText = document.getElementById('predictionText');
+        const defaultEight = document.getElementById('defaultEight');
+        const questionInput = document.getElementById('questionInput');
+        const messageBox = document.getElementById('messageBox');
+        const predictButton = document.getElementById('predictButton');
+
+        // Utility function to display a temporary message
+        function showMessage(text, isError = false) {
+            messageBox.textContent = text;
+            messageBox.className = 'mt-8 p-3 text-sm rounded-lg text-center transition-opacity duration-300 opacity-100 ' + (isError ? 'bg-red-900 text-red-300' : 'bg-green-900 text-green-300');
+            setTimeout(() => {
+                messageBox.classList.add('opacity-0');
+            }, 3000);
+        }
+
+        /**
+         * Core logic to generate a prediction and update the UI.
+         */
+        function askTheBall() {
+            // Basic validation
+            if (questionInput.value.trim().length < 5) {
+                showMessage("Please ask a question longer than 5 characters first.", true);
+                return;
+            }
+
+            // Disable button during animation
+            predictButton.disabled = true;
+            predictButton.textContent = "Shaking...";
+            
+            // 1. Initial State: Hide prediction and show the default '8'
+            predictionDisplay.classList.add('opacity-0');
+            defaultEight.classList.remove('opacity-0');
+            
+            // 2. Start Shake Animation
+            ballContainer.classList.add('shaking');
+
+            // 3. Prediction Logic (runs after a short delay to allow for the shake animation)
+            setTimeout(() => {
+                
+                // --- 8-BALL RESULT CALCULATION (Adapted from Canvas logic) ---
+                // Generate a random index number between 0 and 8 (inclusive)
+                const randomIndex = Math.floor(Math.random() * predictions.length);
+                const prediction = predictions[randomIndex];
+                // --- END CALCULATION ---
+
+                // 4. Update UI with result
+                predictionText.textContent = prediction;
+                
+                // 5. Stop Shake Animation
+                ballContainer.classList.remove('shaking');
+
+                // 6. Reveal the prediction window and hide the default '8'
+                defaultEight.classList.add('opacity-0');
+                predictionDisplay.classList.remove('opacity-0');
+                
+                // 7. Re-enable button
+                predictButton.disabled = false;
+                predictButton.textContent = "Ask the 8-Ball";
+                
+                // Optional: Clear the input after prediction
+                questionInput.value = "";
+                
+            }, 750); // Duration of the shake animation plus a small buffer
+        }
+    </script>
+</body>
+</html>
